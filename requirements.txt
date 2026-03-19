@@ -1,0 +1,8 @@
+paho-mqtt>=2.0.0
+PyYAML>=6.0
+RPi.GPIO>=0.7.1
+gpiozero>=2.0
+smbus2>=0.4.3
+spidev>=3.6
+pyserial>=3.5
+w1thermsensor>=2.3.0

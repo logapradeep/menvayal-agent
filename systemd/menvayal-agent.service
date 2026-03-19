@@ -1,0 +1,17 @@
+[Unit]
+Description=Menvayal IoT Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/menvayal-agent/venv/bin/menvayal-agent --config /etc/menvayal/config.yaml
+Restart=always
+RestartSec=10
+User=root
+WorkingDirectory=/opt/menvayal-agent
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
