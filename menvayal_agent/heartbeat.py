@@ -7,6 +7,7 @@ from typing import Optional
 
 from .config import AgentConfig
 from .mqtt_client import MenvayalMqttClient
+from .http_reporter import HttpReporter
 
 logger = logging.getLogger(__name__)
 
@@ -14,9 +15,11 @@ logger = logging.getLogger(__name__)
 class HeartbeatPublisher:
     """Publishes online status and uptime at regular intervals."""
 
-    def __init__(self, config: AgentConfig, mqtt_client: MenvayalMqttClient):
+    def __init__(self, config: AgentConfig, mqtt_client: MenvayalMqttClient,
+                 http_reporter: Optional[HttpReporter] = None):
         self.config = config
         self.mqtt_client = mqtt_client
+        self.http_reporter = http_reporter
         self._timer: Optional[threading.Timer] = None
         self._running = False
         self._start_time = time.time()
@@ -49,6 +52,12 @@ class HeartbeatPublisher:
                 uptime=self.uptime,
                 firmware_version="0.1.0",
             )
+            if self.http_reporter:
+                self.http_reporter.report_status(
+                    online=True,
+                    uptime=self.uptime,
+                    firmware_version="0.1.0",
+                )
         except Exception as e:
             logger.error("Heartbeat error: %s", e)
         finally:

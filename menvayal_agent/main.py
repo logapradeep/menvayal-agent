@@ -11,6 +11,7 @@ from .mqtt_client import MenvayalMqttClient
 from .command_executor import execute
 from .telemetry_publisher import TelemetryPublisher
 from .heartbeat import HeartbeatPublisher
+from .http_reporter import HttpReporter
 
 logger = logging.getLogger("menvayal_agent")
 
@@ -110,9 +111,12 @@ def main():
 
     mqtt_client.set_command_handler(on_command)
 
+    # HTTP reporter for backend status updates
+    http_reporter = HttpReporter(config.node.uid)
+
     # Telemetry & heartbeat
     telemetry = TelemetryPublisher(config, mqtt_client)
-    heartbeat = HeartbeatPublisher(config, mqtt_client)
+    heartbeat = HeartbeatPublisher(config, mqtt_client, http_reporter=http_reporter)
 
     # Graceful shutdown
     running = True
