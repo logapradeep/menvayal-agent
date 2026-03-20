@@ -35,12 +35,30 @@ class MenvayalMqttClient:
             self._client.tls_set(tls_version=ssl.PROTOCOL_TLSv1_2)
 
         self._client.username_pw_set(self.config.username, self.config.password)
+
+        # Set Last Will and Testament — broker publishes this when client
+        # disconnects ungracefully (power loss, crash, network drop).
+        will_payload = json.dumps({
+            "type": "status",
+            "payload": {
+                "nodeUid": self.config.username,
+                "online": False,
+                "uptime": 0,
+            },
+        })
+        self._client.will_set(
+            self.config.status_topic,
+            payload=will_payload,
+            qos=1,
+            retain=True,
+        )
+
         self._client.on_connect = self._on_connect
         self._client.on_disconnect = self._on_disconnect
         self._client.on_message = self._on_message
 
         logger.info("Connecting to MQTT broker %s:%d", self.config.broker, self.config.port)
-        self._client.connect(self.config.broker, self.config.port, keepalive=60)
+        self._client.connect(self.config.broker, self.config.port, keepalive=30)
         self._client.loop_start()
 
     def disconnect(self) -> None:

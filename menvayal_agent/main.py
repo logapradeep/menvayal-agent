@@ -35,7 +35,7 @@ def main():
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     )
 
-    logger.info("Menvayal Agent v0.1.1 starting")
+    logger.info("Menvayal Agent v0.1.2 starting")
     logger.info("Loading config from %s", args.config)
 
     try:
@@ -93,6 +93,19 @@ def main():
     # Command handler
     def on_command(command: dict):
         cmd_type = command.get("type", "")
+        command_id = command.get("commandId", "")
+
+        # OTA firmware update
+        if cmd_type == "firmwareUpdate":
+            from .ota_updater import perform_update
+            version = command.get("version", "")
+            mqtt_client.publish_command_ack(command_id, "executing")
+            try:
+                msg = perform_update(version)
+                mqtt_client.publish_command_ack(command_id, "completed", applied_value=msg)
+            except Exception as e:
+                mqtt_client.publish_command_ack(command_id, "failed", error=str(e))
+            return
 
         # Route LoRa downlink commands to the bridge
         if cmd_type == "loraDownlink" and lora_bridge:
@@ -101,9 +114,9 @@ def main():
             port = command.get("port", 1)
             try:
                 lora_bridge.send_downlink(dev_eui, bytes.fromhex(payload_hex), port=port)
-                mqtt_client.publish_command_ack(command.get("commandId", ""), "completed")
+                mqtt_client.publish_command_ack(command_id, "completed")
             except Exception as e:
-                mqtt_client.publish_command_ack(command.get("commandId", ""), "failed", error=str(e))
+                mqtt_client.publish_command_ack(command_id, "failed", error=str(e))
             return
 
         # Regular GPIO/pin commands

@@ -3,11 +3,19 @@
 import logging
 import threading
 import time
+from importlib.metadata import version as pkg_version
 from typing import Optional
 
 from .config import AgentConfig
 from .mqtt_client import MenvayalMqttClient
 from .http_reporter import HttpReporter
+
+
+def _get_agent_version() -> str:
+    try:
+        return pkg_version("menvayal-agent")
+    except Exception:
+        return "0.1.0"
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +46,10 @@ class HeartbeatPublisher:
         if self._timer:
             self._timer.cancel()
             self._timer = None
-        # Send offline status
+        # Send offline status via both channels for immediate reflection
         self.mqtt_client.publish_status(online=False, uptime=self.uptime)
+        if self.http_reporter:
+            self.http_reporter.report_status(online=False, uptime=self.uptime)
 
     @property
     def uptime(self) -> int:
@@ -50,13 +60,13 @@ class HeartbeatPublisher:
             self.mqtt_client.publish_status(
                 online=True,
                 uptime=self.uptime,
-                firmware_version="0.1.0",
+                firmware_version=_get_agent_version(),
             )
             if self.http_reporter:
                 self.http_reporter.report_status(
                     online=True,
                     uptime=self.uptime,
-                    firmware_version="0.1.0",
+                    firmware_version=_get_agent_version(),
                 )
         except Exception as e:
             logger.error("Heartbeat error: %s", e)
