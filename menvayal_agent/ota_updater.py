@@ -7,7 +7,7 @@ import os
 
 logger = logging.getLogger(__name__)
 
-GITHUB_RELEASE_URL = "https://github.com/logapradeep/menvayal-agent/archive/refs/tags"
+GITHUB_REPO = "https://github.com/logapradeep/menvayal-agent.git"
 VENV_PIP = os.path.join(sys.prefix, "bin", "pip")
 
 
@@ -19,7 +19,7 @@ def perform_update(version: str) -> str:
     if not version or not version.startswith("v"):
         version = f"v{version}"
 
-    url = f"{GITHUB_RELEASE_URL}/{version}.tar.gz"
+    url = f"git+{GITHUB_REPO}@{version}"
     logger.info("OTA update: installing %s from %s", version, url)
 
     # Install the new version

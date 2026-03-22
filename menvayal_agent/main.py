@@ -35,7 +35,7 @@ def main():
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     )
 
-    logger.info("Menvayal Agent v0.1.3 starting")
+    logger.info("Menvayal Agent v0.1.4 starting")
     logger.info("Loading config from %s", args.config)
 
     try:
