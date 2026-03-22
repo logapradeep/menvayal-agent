@@ -23,13 +23,30 @@ class OneWireHandler:
             except Exception as e:
                 logger.warning("Could not enumerate 1-Wire sensors: %s", e)
 
+    def _find_sensor(self, pin):
+        """Find a 1-Wire sensor matching the pin's one_wire_device_id."""
+        if not self._sensors:
+            return None
+        # Match by device ID if specified
+        if pin.one_wire_device_id:
+            for sensor in self._sensors:
+                if sensor.id == pin.one_wire_device_id:
+                    return sensor
+            logger.warning(
+                "1-Wire sensor %s not found, falling back to first sensor",
+                pin.one_wire_device_id,
+            )
+        return self._sensors[0] if self._sensors else None
+
     def read(self, pin) -> Optional[float]:
-        if not _W1_AVAILABLE or not self._sensors:
+        if not _W1_AVAILABLE:
             logger.debug("Simulated 1-Wire read = 25.0")
             return 25.0
+        sensor = self._find_sensor(pin)
+        if not sensor:
+            logger.warning("No 1-Wire sensor available for pin %d", pin.physical_pin)
+            return None
         try:
-            # Use first available sensor (or match by pin if multiple)
-            sensor = self._sensors[0]
             return sensor.get_temperature()
         except Exception as e:
             logger.error("1-Wire read error: %s", e)

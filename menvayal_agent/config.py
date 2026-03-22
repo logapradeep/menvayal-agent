@@ -38,6 +38,13 @@ class PinConfig:
     protocol: str = "gpio_input"
     label: str = ""
     assigned_to: Optional[str] = None
+    # Bus protocol metadata
+    bus_id: Optional[str] = None              # e.g., "I2C1", "SPI0", "UART0"
+    i2c_address: Optional[int] = None         # 7-bit I2C address (0x00-0x7F)
+    i2c_register: Optional[int] = None        # Start register for read/write
+    spi_cs_pin: Optional[int] = None          # CS pin number for SPI device selection
+    uart_baud_rate: Optional[int] = None      # UART baud rate
+    one_wire_device_id: Optional[str] = None  # 1-Wire ROM ID (e.g., "28-00000ABCDE")
 
 
 @dataclass
@@ -118,6 +125,67 @@ class AgentConfig:
     @property
     def is_lora_device(self) -> bool:
         return self.lora is not None and self.lora.role == "end_device"
+
+    def update_pins(self, pins_data: list[dict], config_path: str = "/etc/menvayal/config.yaml") -> None:
+        """Update pin configuration in memory and persist to config.yaml."""
+        self.pins = [
+            PinConfig(
+                physical_pin=p["physical_pin"],
+                gpio_number=p.get("gpio_number"),
+                protocol=p.get("protocol", "gpio_input"),
+                label=p.get("label", ""),
+                assigned_to=p.get("assigned_to"),
+                bus_id=p.get("bus_id"),
+                i2c_address=p.get("i2c_address"),
+                i2c_register=p.get("i2c_register"),
+                spi_cs_pin=p.get("spi_cs_pin"),
+                uart_baud_rate=p.get("uart_baud_rate"),
+                one_wire_device_id=p.get("one_wire_device_id"),
+            )
+            for p in pins_data
+        ]
+
+        # Persist to config.yaml
+        try:
+            with open(config_path, "r") as f:
+                data = yaml.safe_load(f) or {}
+
+            # Build clean pins list for YAML
+            yaml_pins = []
+            for p in pins_data:
+                entry: dict = {
+                    "physical_pin": p["physical_pin"],
+                }
+                if p.get("gpio_number") is not None:
+                    entry["gpio_number"] = p["gpio_number"]
+                if p.get("protocol"):
+                    entry["protocol"] = p["protocol"]
+                if p.get("label"):
+                    entry["label"] = p["label"]
+                if p.get("assigned_to"):
+                    entry["assigned_to"] = p["assigned_to"]
+                if p.get("bus_id"):
+                    entry["bus_id"] = p["bus_id"]
+                if p.get("i2c_address") is not None:
+                    entry["i2c_address"] = p["i2c_address"]
+                if p.get("i2c_register") is not None:
+                    entry["i2c_register"] = p["i2c_register"]
+                if p.get("spi_cs_pin") is not None:
+                    entry["spi_cs_pin"] = p["spi_cs_pin"]
+                if p.get("uart_baud_rate") is not None:
+                    entry["uart_baud_rate"] = p["uart_baud_rate"]
+                if p.get("one_wire_device_id"):
+                    entry["one_wire_device_id"] = p["one_wire_device_id"]
+                yaml_pins.append(entry)
+
+            data["pins"] = yaml_pins
+
+            with open(config_path, "w") as f:
+                yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error("Failed to persist pin config: %s", e)
 
     @classmethod
     def from_yaml(cls, path: str) -> "AgentConfig":
@@ -225,6 +293,12 @@ class AgentConfig:
                 protocol=p.get("protocol", "gpio_input"),
                 label=p.get("label", ""),
                 assigned_to=p.get("assigned_to"),
+                bus_id=p.get("bus_id"),
+                i2c_address=p.get("i2c_address"),
+                i2c_register=p.get("i2c_register"),
+                spi_cs_pin=p.get("spi_cs_pin"),
+                uart_baud_rate=p.get("uart_baud_rate"),
+                one_wire_device_id=p.get("one_wire_device_id"),
             )
             for p in pins_data
         ]

@@ -35,7 +35,7 @@ def main():
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     )
 
-    logger.info("Menvayal Agent v0.1.2 starting")
+    logger.info("Menvayal Agent v0.1.3 starting")
     logger.info("Loading config from %s", args.config)
 
     try:
@@ -117,6 +117,15 @@ def main():
                 mqtt_client.publish_command_ack(command_id, "completed")
             except Exception as e:
                 mqtt_client.publish_command_ack(command_id, "failed", error=str(e))
+            return
+
+        # Pin configuration sync from backend
+        if cmd_type == "syncPinConfig":
+            pins_data = command.get("pins", [])
+            logger.info("Received pin config sync: %d pins", len(pins_data))
+            config.update_pins(pins_data, args.config)
+            logger.info("Pin config updated: %d pins active", len(config.pins))
+            mqtt_client.publish_command_ack(command_id, "completed")
             return
 
         # Regular GPIO/pin commands
