@@ -15,7 +15,7 @@ except (ImportError, RuntimeError):
     logger.warning("RPi.GPIO not available - GPIO operations will be simulated")
 
 
-_setup_pins: set[int] = set()
+_setup_pins: dict[int, int] = {}  # gpio -> mode (GPIO.IN or GPIO.OUT)
 
 
 class GpioHandler:
@@ -23,10 +23,10 @@ class GpioHandler:
         gpio = pin.gpio_number
         if gpio is None:
             raise ValueError(f"No GPIO number for physical pin {pin.physical_pin}")
-        if gpio not in _setup_pins:
+        if _setup_pins.get(gpio) != mode:
             if _GPIO_AVAILABLE:
                 GPIO.setup(gpio, mode)
-            _setup_pins.add(gpio)
+            _setup_pins[gpio] = mode
 
     def read(self, pin) -> Optional[int]:
         gpio = pin.gpio_number
