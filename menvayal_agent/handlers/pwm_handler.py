@@ -12,11 +12,15 @@ except (ImportError, RuntimeError):
     _GPIO_AVAILABLE = False
 
 _pwm_instances: dict[int, object] = {}
+_pwm_values: dict[int, float] = {}
 
 
 class PwmHandler:
     def read(self, pin) -> Optional[float]:
-        return None  # PWM is output-only
+        gpio = pin.gpio_number
+        if gpio is None:
+            return None
+        return _pwm_values.get(gpio, 0.0)
 
     def write(self, pin, value) -> float:
         gpio = pin.gpio_number
@@ -24,6 +28,7 @@ class PwmHandler:
             raise ValueError(f"No GPIO number for physical pin {pin.physical_pin}")
 
         duty_cycle = max(0.0, min(100.0, float(value)))
+        _pwm_values[gpio] = duty_cycle
 
         if _GPIO_AVAILABLE:
             if gpio not in _pwm_instances:

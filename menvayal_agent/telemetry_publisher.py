@@ -1,4 +1,4 @@
-"""Periodic sensor reading and telemetry publishing."""
+"""Periodic telemetry publishing for readable inputs and controllable outputs."""
 
 import logging
 import threading
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class TelemetryPublisher:
-    """Reads all input pins periodically and publishes telemetry."""
+    """Reads configured telemetry sources periodically and publishes telemetry."""
 
     def __init__(self, config: AgentConfig, mqtt_client: MenvayalMqttClient):
         self.config = config
@@ -21,7 +21,7 @@ class TelemetryPublisher:
 
     def start(self) -> None:
         self._running = True
-        self._schedule_next()
+        self._publish_cycle()
         logger.info(
             "Telemetry publisher started (interval=%ds)",
             self.config.telemetry.interval_seconds,
@@ -45,7 +45,7 @@ class TelemetryPublisher:
 
     def _publish_cycle(self) -> None:
         try:
-            readings = self._read_all_inputs()
+            readings = self._read_all_telemetry_sources()
             if readings:
                 self.mqtt_client.publish_telemetry(readings)
                 logger.debug("Published %d telemetry readings", len(readings))
@@ -54,14 +54,21 @@ class TelemetryPublisher:
         finally:
             self._schedule_next()
 
-    def _read_all_inputs(self) -> list[dict]:
-        """Read all input pins and return telemetry readings."""
+    def _read_all_telemetry_sources(self) -> list[dict]:
+        """Read all telemetry-capable pins and return telemetry readings."""
         from .command_executor import _get_handler
 
         readings = []
+        readable_protocols = {
+            "gpio_input",
+            "analog_input",
+            "oneWire",
+            "gpio_output",
+            "pwm",
+        }
 
         for pin in self.config.pins:
-            if pin.protocol not in ("gpio_input", "analog_input", "oneWire"):
+            if pin.protocol not in readable_protocols:
                 continue
 
             handler = _get_handler(pin.protocol)

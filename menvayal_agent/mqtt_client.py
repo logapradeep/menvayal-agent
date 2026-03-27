@@ -8,6 +8,7 @@ from typing import Callable, Optional
 
 import paho.mqtt.client as mqtt
 
+from . import __version__
 from .config import MqttConfig
 
 logger = logging.getLogger(__name__)
@@ -88,7 +89,7 @@ class MenvayalMqttClient:
             qos=1,
         )
 
-    def publish_status(self, online: bool, uptime: int, firmware_version: str = "0.1.0") -> None:
+    def publish_status(self, online: bool, uptime: int, firmware_version: str = __version__) -> None:
         if not self._client or not self._connected:
             logger.warning("Cannot publish status: not connected")
             return

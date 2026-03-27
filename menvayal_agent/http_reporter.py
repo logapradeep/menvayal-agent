@@ -5,6 +5,8 @@ import logging
 import urllib.request
 import urllib.error
 
+from . import __version__
+
 logger = logging.getLogger(__name__)
 
 TELEMETRY_INGRESS_URL = "https://telemetryingress-amxy2i3cma-uc.a.run.app"
@@ -18,7 +20,7 @@ class HttpReporter:
         self.node_uid = node_uid
         self.base_url = base_url
 
-    def report_status(self, online: bool, uptime: int, firmware_version: str = "0.1.0") -> None:
+    def report_status(self, online: bool, uptime: int, firmware_version: str = __version__) -> None:
         self._post({
             "type": "status",
             "payload": {

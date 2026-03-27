@@ -16,6 +16,7 @@ except (ImportError, RuntimeError):
 
 
 _setup_pins: dict[int, int] = {}  # gpio -> mode (GPIO.IN or GPIO.OUT)
+_output_values: dict[int, int] = {}  # gpio -> last written logical level
 
 
 class GpioHandler:
@@ -32,11 +33,16 @@ class GpioHandler:
         gpio = pin.gpio_number
         if gpio is None:
             return None
-        self._setup(pin, GPIO.IN if _GPIO_AVAILABLE else None)
+        protocol = getattr(pin, "protocol", "")
+        mode = GPIO.OUT if _GPIO_AVAILABLE and protocol == "gpio_output" else (
+            GPIO.IN if _GPIO_AVAILABLE else None
+        )
+        self._setup(pin, mode)
         if _GPIO_AVAILABLE:
             return GPIO.input(gpio)
-        logger.debug("Simulated read pin GPIO%d = 0", gpio)
-        return 0
+        simulated = _output_values.get(gpio, 0)
+        logger.debug("Simulated read pin GPIO%d = %d", gpio, simulated)
+        return simulated
 
     def write(self, pin, value) -> int:
         gpio = pin.gpio_number
@@ -46,5 +52,6 @@ class GpioHandler:
         out = 1 if value else 0
         if _GPIO_AVAILABLE:
             GPIO.output(gpio, out)
+        _output_values[gpio] = out
         logger.info("GPIO%d set to %d", gpio, out)
         return out
