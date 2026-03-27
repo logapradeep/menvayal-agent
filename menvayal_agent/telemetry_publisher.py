@@ -5,6 +5,7 @@ import threading
 from typing import Optional
 
 from .config import AgentConfig
+from .http_reporter import HttpReporter
 from .mqtt_client import MenvayalMqttClient
 
 logger = logging.getLogger(__name__)
@@ -13,9 +14,15 @@ logger = logging.getLogger(__name__)
 class TelemetryPublisher:
     """Reads configured telemetry sources periodically and publishes telemetry."""
 
-    def __init__(self, config: AgentConfig, mqtt_client: MenvayalMqttClient):
+    def __init__(
+        self,
+        config: AgentConfig,
+        mqtt_client: MenvayalMqttClient,
+        http_reporter: Optional[HttpReporter] = None,
+    ):
         self.config = config
         self.mqtt_client = mqtt_client
+        self.http_reporter = http_reporter
         self._timer: Optional[threading.Timer] = None
         self._running = False
 
@@ -48,6 +55,8 @@ class TelemetryPublisher:
             readings = self._read_all_telemetry_sources()
             if readings:
                 self.mqtt_client.publish_telemetry(readings)
+                if self.http_reporter:
+                    self.http_reporter.report_telemetry(readings)
                 logger.debug("Published %d telemetry readings", len(readings))
         except Exception as e:
             logger.error("Telemetry publish error: %s", e)
@@ -78,7 +87,7 @@ class TelemetryPublisher:
             try:
                 value = handler.read(pin)
                 if value is not None:
-                    source_key = pin.label or f"pin_{pin.physical_pin}"
+                    source_key = pin.telemetry_source_key or pin.label or f"pin_{pin.physical_pin}"
                     readings.append({
                         "sourceKey": source_key,
                         "value": value,

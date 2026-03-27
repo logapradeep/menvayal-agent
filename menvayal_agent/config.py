@@ -18,6 +18,7 @@ class MqttConfig:
     broker: str
     port: int = 8883
     tls: bool = True
+    node_uid: str = ""
     username: str = ""
     password: str = ""
     commands_topic: str = ""
@@ -37,6 +38,7 @@ class PinConfig:
     gpio_number: Optional[int] = None
     protocol: str = "gpio_input"
     label: str = ""
+    telemetry_source_key: Optional[str] = None
     assigned_to: Optional[str] = None
     # Bus protocol metadata
     bus_id: Optional[str] = None              # e.g., "I2C1", "SPI0", "UART0"
@@ -134,6 +136,7 @@ class AgentConfig:
                 gpio_number=p.get("gpio_number"),
                 protocol=p.get("protocol", "gpio_input"),
                 label=p.get("label", ""),
+                telemetry_source_key=p.get("telemetry_source_key"),
                 assigned_to=p.get("assigned_to"),
                 bus_id=p.get("bus_id"),
                 i2c_address=p.get("i2c_address"),
@@ -162,6 +165,8 @@ class AgentConfig:
                     entry["protocol"] = p["protocol"]
                 if p.get("label"):
                     entry["label"] = p["label"]
+                if p.get("telemetry_source_key"):
+                    entry["telemetry_source_key"] = p["telemetry_source_key"]
                 if p.get("assigned_to"):
                     entry["assigned_to"] = p["assigned_to"]
                 if p.get("bus_id"):
@@ -206,6 +211,7 @@ class AgentConfig:
             broker=mqtt_data["broker"],
             port=mqtt_data.get("port", 8883),
             tls=mqtt_data.get("tls", True),
+            node_uid=node.uid,
             username=mqtt_data.get("username", node.uid),
             password=mqtt_data.get("password", node.auth_token),
             commands_topic=topics.get("commands", f"menvayal/{node.uid}/commands"),
@@ -292,6 +298,7 @@ class AgentConfig:
                 gpio_number=p.get("gpio_number"),
                 protocol=p.get("protocol", "gpio_input"),
                 label=p.get("label", ""),
+                telemetry_source_key=p.get("telemetry_source_key"),
                 assigned_to=p.get("assigned_to"),
                 bus_id=p.get("bus_id"),
                 i2c_address=p.get("i2c_address"),

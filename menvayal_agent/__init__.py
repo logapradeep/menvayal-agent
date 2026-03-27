@@ -1,3 +1,3 @@
 """Menvayal IoT Agent - connects hardware to Menvayal cloud via MQTT."""
 
-__version__ = "0.1.6"
+__version__ = "0.1.7"

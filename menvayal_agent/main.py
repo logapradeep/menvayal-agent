@@ -35,7 +35,7 @@ def main():
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     )
 
-    logger.info("Menvayal Agent v0.1.6 starting")
+    logger.info("Menvayal Agent v0.1.7 starting")
     logger.info("Loading config from %s", args.config)
 
     try:
@@ -100,11 +100,14 @@ def main():
             from .ota_updater import perform_update
             version = command.get("version", "")
             mqtt_client.publish_command_ack(command_id, "executing")
+            http_reporter.report_command_ack(command_id, "executing")
             try:
                 msg = perform_update(version)
                 mqtt_client.publish_command_ack(command_id, "completed", applied_value=msg)
+                http_reporter.report_command_ack(command_id, "completed", applied_value=msg)
             except Exception as e:
                 mqtt_client.publish_command_ack(command_id, "failed", error=str(e))
+                http_reporter.report_command_ack(command_id, "failed", error=str(e))
             return
 
         # Route LoRa downlink commands to the bridge
@@ -115,8 +118,10 @@ def main():
             try:
                 lora_bridge.send_downlink(dev_eui, bytes.fromhex(payload_hex), port=port)
                 mqtt_client.publish_command_ack(command_id, "completed")
+                http_reporter.report_command_ack(command_id, "completed")
             except Exception as e:
                 mqtt_client.publish_command_ack(command_id, "failed", error=str(e))
+                http_reporter.report_command_ack(command_id, "failed", error=str(e))
             return
 
         # Pin configuration sync from backend
@@ -126,10 +131,11 @@ def main():
             config.update_pins(pins_data, args.config)
             logger.info("Pin config updated: %d pins active", len(config.pins))
             mqtt_client.publish_command_ack(command_id, "completed")
+            http_reporter.report_command_ack(command_id, "completed")
             return
 
         # Regular GPIO/pin commands
-        execute(config, mqtt_client, command)
+        execute(config, mqtt_client, command, http_reporter=http_reporter)
 
     mqtt_client.set_command_handler(on_command)
 
@@ -137,7 +143,7 @@ def main():
     http_reporter = HttpReporter(config.node.uid)
 
     # Telemetry & heartbeat
-    telemetry = TelemetryPublisher(config, mqtt_client)
+    telemetry = TelemetryPublisher(config, mqtt_client, http_reporter=http_reporter)
     heartbeat = HeartbeatPublisher(config, mqtt_client, http_reporter=http_reporter)
 
     # Graceful shutdown

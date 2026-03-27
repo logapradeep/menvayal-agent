@@ -42,7 +42,7 @@ class MenvayalMqttClient:
         will_payload = json.dumps({
             "type": "status",
             "payload": {
-                "nodeUid": self.config.username,
+                "nodeUid": self.payload_node_uid,
                 "online": False,
                 "uptime": 0,
             },
@@ -72,13 +72,17 @@ class MenvayalMqttClient:
     def is_connected(self) -> bool:
         return self._connected
 
+    @property
+    def payload_node_uid(self) -> str:
+        return self.config.node_uid or self.config.username
+
     def publish_telemetry(self, readings: list[dict]) -> None:
         if not self._client or not self._connected:
             logger.warning("Cannot publish telemetry: not connected")
             return
 
         payload = json.dumps({
-            "nodeUid": self.config.username,
+            "nodeUid": self.payload_node_uid,
             "readings": readings,
             "timestamp": int(time.time() * 1000),
         })
@@ -95,7 +99,7 @@ class MenvayalMqttClient:
             return
 
         payload = json.dumps({
-            "nodeUid": self.config.username,
+            "nodeUid": self.payload_node_uid,
             "online": online,
             "uptime": uptime,
             "firmwareVersion": firmware_version,
@@ -114,7 +118,7 @@ class MenvayalMqttClient:
             return
 
         payload = json.dumps({
-            "nodeUid": self.config.username,
+            "nodeUid": self.payload_node_uid,
             "type": "lora_uplink",
             "data": uplink_data,
             "timestamp": int(time.time() * 1000),
@@ -134,7 +138,7 @@ class MenvayalMqttClient:
             return
 
         payload = json.dumps({
-            "nodeUid": self.config.username,
+            "nodeUid": self.payload_node_uid,
             "type": "lora_event",
             "event": event,
             "timestamp": int(time.time() * 1000),
@@ -158,7 +162,7 @@ class MenvayalMqttClient:
             return
 
         payload: dict = {
-            "nodeUid": self.config.username,
+            "nodeUid": self.payload_node_uid,
             "commandId": command_id,
             "status": status,
         }

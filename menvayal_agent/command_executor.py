@@ -4,6 +4,7 @@ import logging
 from typing import Optional
 
 from .config import AgentConfig, PinConfig
+from .http_reporter import HttpReporter
 from .mqtt_client import MenvayalMqttClient
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,35 @@ def _find_pin(config: AgentConfig, command: dict) -> Optional[PinConfig]:
     return None
 
 
-def execute(config: AgentConfig, mqtt_client: MenvayalMqttClient, command: dict) -> None:
+def _publish_ack(
+    mqtt_client: MenvayalMqttClient,
+    http_reporter: Optional[HttpReporter],
+    command_id: str,
+    status: str,
+    applied_value=None,
+    error: Optional[str] = None,
+) -> None:
+    mqtt_client.publish_command_ack(
+        command_id,
+        status,
+        applied_value=applied_value,
+        error=error,
+    )
+    if http_reporter:
+        http_reporter.report_command_ack(
+            command_id,
+            status,
+            applied_value=applied_value,
+            error=error,
+        )
+
+
+def execute(
+    config: AgentConfig,
+    mqtt_client: MenvayalMqttClient,
+    command: dict,
+    http_reporter: Optional[HttpReporter] = None,
+) -> None:
     """Execute a command received from MQTT."""
     command_id = command.get("commandId", "unknown")
     cmd_type = command.get("type", "setPower")
@@ -71,13 +100,13 @@ def execute(config: AgentConfig, mqtt_client: MenvayalMqttClient, command: dict)
     )
 
     # Acknowledge receipt
-    mqtt_client.publish_command_ack(command_id, "acknowledged")
+    _publish_ack(mqtt_client, http_reporter, command_id, "acknowledged")
 
     pin = _find_pin(config, command)
     if not pin:
         error = f"No matching pin for command (gpio={command.get('gpioNumber')}, pin={command.get('pinNumber')})"
         logger.error(error)
-        mqtt_client.publish_command_ack(command_id, "failed", error=error)
+        _publish_ack(mqtt_client, http_reporter, command_id, "failed", error=error)
         return
 
     # Use protocol from command or fall back to pin config
@@ -87,11 +116,11 @@ def execute(config: AgentConfig, mqtt_client: MenvayalMqttClient, command: dict)
     if not handler:
         error = f"No handler available for protocol {effective_protocol}"
         logger.error(error)
-        mqtt_client.publish_command_ack(command_id, "failed", error=error)
+        _publish_ack(mqtt_client, http_reporter, command_id, "failed", error=error)
         return
 
     try:
-        mqtt_client.publish_command_ack(command_id, "executing")
+        _publish_ack(mqtt_client, http_reporter, command_id, "executing")
 
         if cmd_type == "setPower":
             applied = handler.write(pin, 1 if value else 0)
@@ -102,13 +131,13 @@ def execute(config: AgentConfig, mqtt_client: MenvayalMqttClient, command: dict)
         else:
             error = f"Unknown command type: {cmd_type}"
             logger.error(error)
-            mqtt_client.publish_command_ack(command_id, "failed", error=error)
+            _publish_ack(mqtt_client, http_reporter, command_id, "failed", error=error)
             return
 
-        mqtt_client.publish_command_ack(command_id, "completed", applied_value=applied)
+        _publish_ack(mqtt_client, http_reporter, command_id, "completed", applied_value=applied)
         logger.info("Command %s completed, applied=%s", command_id, applied)
 
     except Exception as e:
         error = f"Execution error: {e}"
         logger.error(error)
-        mqtt_client.publish_command_ack(command_id, "failed", error=error)
+        _publish_ack(mqtt_client, http_reporter, command_id, "failed", error=error)
